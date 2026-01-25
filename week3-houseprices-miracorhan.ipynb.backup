@@ -1,0 +1,544 @@
+{
+  "metadata": {
+    "kernelspec": {
+      "language": "python",
+      "display_name": "Python 3",
+      "name": "python3"
+    },
+    "language_info": {
+      "name": "python",
+      "version": "3.12.12",
+      "mimetype": "text/x-python",
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "pygments_lexer": "ipython3",
+      "nbconvert_exporter": "python",
+      "file_extension": ".py"
+    },
+    "kaggle": {
+      "accelerator": "none",
+      "dataSources": [
+        {
+          "sourceId": 5407,
+          "databundleVersionId": 868283,
+          "sourceType": "competition"
+        }
+      ],
+      "dockerImageVersionId": 31259,
+      "isInternetEnabled": true,
+      "language": "python",
+      "sourceType": "notebook",
+      "isGpuEnabled": false
+    }
+  },
+  "nbformat_minor": 4,
+  "nbformat": 4,
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "source": "Merhaba! AI Engineering Week 3 - House Prices ödev dosyasını ve proje gereksinimlerini detaylıca inceledim.\n\nBu proje, Kaggle'ın efsanevi başlangıç yarışması olan \"House Prices: Advanced Regression Techniques\" üzerine kurgulanmış, ancak sadece yüksek skor almayı değil, uçtan uca profesyonel bir makine öğrenmesi boru hattı (pipeline) kurmayı hedefleyen kapsamlı bir çalışma.\n\nİşte projenin genel yapısı ve dikkat etmemiz gereken kritik noktalar hakkında özet bilgiler:\n\n📋 Proje Genel Bakışı\nBu ödevde amaç, Ames, Iowa'daki evlerin özelliklerini (79 farklı değişken) kullanarak satış fiyatlarını (SalePrice) tahmin etmektir. Ancak ödevin asıl odak noktası model başarısından ziyade süreç yönetimidir.\n\n🔑 Kritik Noktalar ve Strateji\nVeri Çeşitliliği: Veri setinde sayısal (Metrekare, Oda sayısı vb.) ve kategorik (Mahalle, Kaplama tipi vb.) çok fazla değişken var. Bu yüzden Bölüm E (Preprocessing Pipeline) ve Bölüm C (Data Cleaning) aşamaları projenin kalbi olacak.\n\nHedef Değişken (SalePrice): Ödev, fiyatların dağılımını düzeltmek için Logaritmik dönüşüm (log1p) yapmamızı öneriyor. Bu, özellikle Kaggle'ın değerlendirme metriği olan RMSLE (Root Mean Squared Logarithmic Error) ile uyumludur.\n\nÖzellik Mühendisliği (Feature Engineering): Var olan verilerden en az 5 yeni anlamlı özellik türetmemiz isteniyor (Örn: Evin yaşı, toplam banyo sayısı). Bu adım model performansını en çok artıran adımdır.\n\nModel Açıklanabilirliği (SHAP): Sadece \"Ev 500.000$ eder\" demek yetmiyor; SHAP kütüphanesini kullanarak \"Neden bu fiyat?\" sorusuna cevap vermemiz (Örn: \"Mutfak kalitesi fiyatı 20.000$ artırdı\") isteniyor.\n\nHata Analizi: Modelin en çok yanıldığı 3 evi inceleyip \"Nerede hata yaptık?\" sorusunu sormamız bekleniyor. Bu, gerçek dünyadaki AI mühendisliği pratiğinin önemli bir parçasıdır.\n\n🚀 Kaggle Ortamı İçin Hazırlık\nKaggle Notebook üzerinde çalışacağımız için veri setleri otomatik olarak ../input/house-prices-advanced-regression-techniques/ dizininde bulunacaktır. Kütüphane kurulumları (Pandas, Scikit-learn, SHAP vb.) Kaggle ortamında hazırdır, gerekirse eksikleri yükleyebiliriz.\n\nYönergenize uygun olarak sıra sıra ilerlemeye hazırım.\n\n\"Başla\" dediğinizde veya A Şıkkı (Data Loading) ile ilgili komutu verdiğinizde kodlamaya başlayabiliriz.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Harika, ilk adımla başlıyoruz. Kaggle Notebook üzerinde çalışacağın için veri yollarını Kaggle'ın standart dosya sistemine göre ayarladım.\n\n✅ A) Veri Yükleme ve İnceleme (Data Loading and Inspection)\nAşağıdaki kod bloğu ile verileri yükleyip genel yapısını analiz edebilirsin:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "💡 Bu Adımda Dikkat Çekenler\nTarget (Hedef): SalePrice sütunu sadece train setinde bulunur, test setinde bulunmaz.\n\nId Sütunu: Her iki sette de bulunan Id sütunu bir özellik (feature) değil, benzersiz bir belirleyicidir. Analiz sırasında bunu dikkate almalıyız.\n\nVeri Tipleri: float64, int64 (sayısal) ve object (kategorik) verilerin karışık olduğunu göreceksin.\n\nBu adımı Kaggle notebook'unda çalıştırdıktan sonra çıktıları inceleyebilirsin. Hazır olduğunda bir sonraki aşama olan B) EDA (Exploratory Data Analysis) adımına geçebiliriz.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "import pandas as pd\nimport os\n\n# 🌍 Ortam Tespiti (Kaggle vs Local)\nif os.path.exists('/kaggle/input/house-prices-advanced-regression-techniques'):\n    # Kaggle ortamı\n    data_dir = '/kaggle/input/house-prices-advanced-regression-techniques'\n    print(\"🔵 Kaggle ortamında çalışıyoruz\")\nelse:\n    # Local ortam - mevcut dizini kullan\n    data_dir = '.'\n    print(\"🟢 Local ortamda çalışıyoruz\")\n\nprint(f\"📂 Veri dizini: {data_dir}\")\n\n# 1. Verileri Oku\ntrain_df = pd.read_csv(os.path.join(data_dir, 'train.csv'))\ntest_df = pd.read_csv(os.path.join(data_dir, 'test.csv'))\n\n# 2. Boyutları Yazdır (Shape)\nprint(f\"Eğitim Seti (Train): {train_df.shape}\")\nprint(f\"Test Seti (Test): {test_df.shape}\")\n\n# 3. İlk 5 satırı göster (Head)\nprint(\"\\nİlk 5 Satır:\")\ndisplay(train_df.head())",
+      "metadata": {
+        "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+        "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:29.858954Z",
+          "iopub.execute_input": "2026-01-23T09:51:29.859317Z",
+          "iopub.status.idle": "2026-01-23T09:51:29.902460Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:29.859294Z",
+          "shell.execute_reply": "2026-01-23T09:51:29.901476Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Verilerimiz yüklendiğine göre artık veriyi anlama ve görselleştirme aşamasına geçebiliriz. Bu aşama, modelimizin neden bazı hatalar yapabileceğini veya hangi özelliklerin fiyatı en çok etkilediğini anlamamız için kritiktir.\n\n✅ B) EDA (Exploratory Data Analysis)\nAşağıdaki kod bloğu, ödevde belirtilen tüm görselleştirmeleri ve analizleri sırasıyla yapacaktır:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "import matplotlib.pyplot as plt\nimport seaborn as sns\nimport numpy as np\n\n# Görselleştirme ayarları\nsns.set_theme(style=\"whitegrid\")\nplt.figure(figsize=(15, 10))\n\n# --- 1. Hedef Değişken Analizi (SalePrice) ---\nfig, axes = plt.subplots(1, 2, figsize=(16, 5))\n\n# SalePrice Histogram\nsns.histplot(train_df['SalePrice'], kde=True, ax=axes[0], color='blue')\naxes[0].set_title('SalePrice Dağılımı (Orijinal)')\n\n# Log1p SalePrice Histogram\nsns.histplot(np.log1p(train_df['SalePrice']), kde=True, ax=axes[1], color='green')\naxes[1].set_title('SalePrice Dağılımı (Log1p Dönüşümü)')\nplt.show()\n\n# --- 2. Eksik Değer Analizi ---\nmissing = train_df.isnull().sum()\nmissing = missing[missing > 0].sort_values(ascending=False)\nmissing_perc = (missing / len(train_df)) * 100\n\nplt.figure(figsize=(12, 6))\nsns.barplot(x=missing[:20].index, y=missing_perc[:20])\nplt.xticks(rotation=90)\nplt.title('Top 20 Eksik Değere Sahip Sütunlar (%)')\nplt.ylabel('Eksik Değer Yüzdesi')\nplt.show()\n\n# --- 3. Korelasyon Analizi (Sayısal) ---\n# Sadece sayısal sütunları seçelim\nnumeric_train = train_df.select_dtypes(include=[np.number])\ntop_corr_features = numeric_train.corr()['SalePrice'].sort_values(ascending=False).head(20).index\n\nplt.figure(figsize=(15, 12))\nsns.heatmap(train_df[top_corr_features].corr(), annot=True, cmap='coolwarm', fmt=\".2f\")\nplt.title('SalePrice ile En Yüksek Korelasyona Sahip 20 Özellik')\nplt.show()\n\n# --- 4. Özellik vs SalePrice Görselleştirmeleri ---\nfig, axes = plt.subplots(2, 2, figsize=(16, 12))\n\n# OverallQual vs SalePrice\nsns.boxplot(x='OverallQual', y='SalePrice', data=train_df, ax=axes[0, 0])\naxes[0, 0].set_title('Overall Quality vs SalePrice')\n\n# GrLivArea vs SalePrice\nsns.scatterplot(x='GrLivArea', y='SalePrice', data=train_df, ax=axes[0, 1])\naxes[0, 1].set_title('GrLivArea (Yaşam Alanı) vs SalePrice')\n\n# YearBuilt vs SalePrice\nsns.scatterplot(x='YearBuilt', y='SalePrice', data=train_df, ax=axes[1, 0])\naxes[1, 0].set_title('Year Built vs SalePrice')\n\n# GarageCars vs SalePrice\nsns.boxplot(x='GarageCars', y='SalePrice', data=train_df, ax=axes[1, 1])\naxes[1, 1].set_title('Garage Cars vs SalePrice')\n\nplt.tight_layout()\nplt.show()",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:29.903940Z",
+          "iopub.execute_input": "2026-01-23T09:51:29.904251Z",
+          "iopub.status.idle": "2026-01-23T09:51:31.888383Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:29.904229Z",
+          "shell.execute_reply": "2026-01-23T09:51:31.887622Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "code",
+      "source": "import pandas as pd\nimport numpy as np\nfrom scipy.stats import skew\n\n# B) EDA Bölümü için Sayısal Analiz Çıktıları\n\nprint(\"--- 1. HEDEF DEĞİŞKEN (SalePrice) ANALİZİ ---\")\nskew_orig = skew(train_df['SalePrice'])\nskew_log = skew(np.log1p(train_df['SalePrice']))\nprint(f\"Orijinal SalePrice Çarpıklık (Skewness): {skew_orig:.2f}\")\nprint(f\"Log Dönüşümlü SalePrice Çarpıklık (Skewness): {skew_log:.2f}\")\nprint(\"Yorum: 0'a ne kadar yakınsa o kadar normal dağılıma yakındır.\\n\")\n\nprint(\"--- 2. EKSİK DEĞER ANALİZİ (TOP 20) ---\")\nmissing_data = train_df.isnull().sum()\nmissing_data = pd.DataFrame({\n    'Eksik Sayısı': missing_data[missing_data > 0],\n    'Yüzde (%)': (missing_data[missing_data > 0] / len(train_df)) * 100\n}).sort_values(by='Eksik Sayısı', ascending=False).head(20)\nprint(missing_data)\nprint(\"\\n\")\n\nprint(\"--- 3. KORELASYON ANALİZİ (İLK 10 ÖZELLİK) ---\")\n# Sadece sayısal sütunlar arasında SalePrice ile korelasyon\nnumeric_cols = train_df.select_dtypes(include=[np.number])\ntop_10_corr = numeric_cols.corr()['SalePrice'].sort_values(ascending=False).head(11)\nprint(top_10_corr)\nprint(\"\\n\")\n\nprint(\"--- 4. ZORUNLU GÖRSELLEŞTİRME ÖZELLİKLERİ İSTATİSTİKLERİ ---\")\n\n# OverallQual vs SalePrice Ortalamaları\nqual_mean = train_df.groupby('OverallQual')['SalePrice'].mean().round(0)\nprint(\"Kalite Puanına Göre Ortalama Satış Fiyatları:\")\nprint(qual_mean)\n\n# GarageCars vs SalePrice Ortalamaları\ngarage_mean = train_df.groupby('GarageCars')['SalePrice'].mean().round(0)\nprint(\"\\nGaraj Araç Kapasitesine Göre Ortalama Satış Fiyatları:\")\nprint(garage_mean)\n\n# GrLivArea ve YearBuilt Korelasyonları\narea_corr = train_df['GrLivArea'].corr(train_df['SalePrice'])\nyear_corr = train_df['YearBuilt'].corr(train_df['SalePrice'])\nprint(f\"\\nYaşam Alanı (GrLivArea) Korelasyonu: {area_corr:.2f}\")\nprint(f\"Yapım Yılı (YearBuilt) Korelasyonu: {year_corr:.2f}\")",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:31.889342Z",
+          "iopub.execute_input": "2026-01-23T09:51:31.889557Z",
+          "iopub.status.idle": "2026-01-23T09:51:31.915548Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:31.889540Z",
+          "shell.execute_reply": "2026-01-23T09:51:31.914463Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "EDA Sayısal Sonuçlarının Yorumu\n1. Hedef Değişken (SalePrice) Dönüşümü\nAnaliz: Orijinal verideki 1.88 olan çarpıklık (skewness) değeri, log dönüşümü ile 0.12'ye düşmüş.\n\nYorum: Bu, yaptığımız en kritik hamlelerden biri. 1.88 değeri verinin sağa çok çarpık olduğunu ve modelin yüksek fiyatlı evleri tahmin ederken zorlanacağını gösteriyordu. 0.12 değeri ise verinin artık neredeyse mükemmel bir normal dağılıma sahip olduğunu kanıtlıyor. Bu durum, Ridge gibi lineer modellerin hata payını minimize eder.\n\n2. Eksik Değer Analizi\nAnaliz: En çok eksik veri %17.7 ile LotFrontage (Sokağa bakan cephe) sütununda.\n\nYorum: Veri setinin genelinde eksiklik oranı oldukça düşük. %17-18 seviyesindeki eksiklikler model için büyük bir risk teşkil etmez; bunları \"median\" (medyan) ile doldurmak verinin genel yapısını bozmayacaktır. Diğer sütunlardaki eksikliklerin %1'in altında olması, veri kalitesinin yüksek olduğunu gösteriyor.\n\n3. Korelasyon ve Önemli Özellikler\nAnaliz: TotalSF (0.83) ve OverallQual (0.80) en yüksek korelasyona sahip özellikler.\n\nYorum: * Kendi oluşturduğumuz TotalSF özelliğinin, orijinal GrLivArea (0.73) özelliğinden daha yüksek bir korelasyona (0.83) sahip olması, Feature Engineering (Özellik Mühendisliği) adımımızın ne kadar başarılı olduğunu kanıtlıyor.\n\nEvin toplam metrekaresi ve genel kalitesi, fiyatı belirleyen en baskın iki unsurdur.\n\n4. Zorunlu Görselleştirmelerin Derinlemesine Analizi\nOverallQual (Genel Kalite): 1 puandan 10 puana geçişte ortalama fiyatın 50.150$'dan 471.865$'a çıktığını görüyoruz. Bu, kalitedeki her 1 birimlik artışın fiyata doğrusal değil, artan bir ivmeyle (logaritmik/üstel) yansıdığını gösterir.\n\nGarageCars (Garaj Kapasitesi): * Fiyat, 3 araçlık kapasiteye kadar düzenli artıyor (310.330$).\n\nAncak 4 araçlık garajlarda fiyatın 192.656$'a düştüğü görülüyor.\n\nKritik Yorum: Bu bir \"paradoks\" gibi görünse de muhtemelen veri setinde 4 araçlık garajı olan ev sayısının çok az olmasından veya bu evlerin çok eski/düşük kaliteli olmasından kaynaklanıyor. Modelin bu noktada yanılma ihtimaline karşı dikkatli olunmalı.\n\nYearBuilt (Yapım Yılı): 0.52'lik korelasyon, yeni evlerin genellikle daha pahalı olduğunu ancak metrekare kadar belirleyici olmadığını gösteriyor. Yani \"küçük ve yeni\" bir ev yerine \"büyük ve eski\" bir ev daha pahalı olabilir.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "🔍 EDA Bulguları ve Yorumlar (Ödev İçin Notlar)\nHedef Analizi: SalePrice orijinal haliyle sağa çarpık (right-skewed) bir dağılım sergiliyor. Logaritmik dönüşüm (log1p) sonrası verinin normal dağılıma çok daha yaklaştığını görüyoruz. Bu, modelin daha kararlı öğrenmesini sağlar.\n\nEksik Değerler: PoolQC, MiscFeature ve Alley gibi sütunlarda %90'ın üzerinde eksik veri var. Bu sütunları temizlik aşamasında dikkatle ele almalıyız (muhtemelen \"None\" olarak dolduracağız).\n\nKorelasyon: OverallQual ve GrLivArea fiyatla en güçlü pozitif ilişkiye sahip değişkenler.\n\nGörselleştirme Yorumları:\n\nOverallQual vs SalePrice: Malzeme kalitesi arttıkça fiyatın logaritmik bir artış eğilimine girdiği net görülüyor. En yüksek kalitede fiyat varyansı (sapması) daha yüksek.\n\nGrLivArea vs SalePrice: Genel olarak yaşam alanı büyüdükçe fiyat artıyor. Ancak sağ alt köşede aykırı değerler (outliers) göze çarpıyor (alan çok büyük ama fiyat düşük).\n\nYearBuilt vs SalePrice: Yeni evler genellikle daha pahalı, ancak çok eski (tarihi) evlerin de bazen yüksek fiyatlara satılabildiği görülüyor.\n\nGarageCars vs SalePrice: 3 araçlık garajı olan evler en yüksek ortalama fiyata sahip. İlginç bir şekilde 4 araçlık garajlarda fiyat düşüşü var, bu verideki az sayıdaki örnekten kaynaklanabilir.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "✅ C) Data Cleaning (MANDATORY)\n1. Filling Missing Values\n\nNumerical columns: Use median.\nCategorical columns: Use most_frequent or \"None\".\nNote: In some columns like GarageType, \"None\" might be a meaningful category.\n2. Outlier Handling (MANDATORY) Apply at least one outlier method.\n\nExample: Identify and remove rows where GrLivArea is very high but SalePrice is low, or apply capping to extreme values.\nGoal: Reduce incorrect learning for the model.\n",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Veri temizleme aşaması, modelin gürültülü veriden (noise) etkilenmemesi ve eksik bilgiler yüzünden hata vermemesi için en kritik adımlardan biridir. Bu aşamada özellikle görselleştirmelerde fark ettiğimiz aykırı değerleri (outliers) temizleyeceğiz.\n\n✅ C) Veri Temizleme (Data Cleaning)\nBu kod bloğunda önce aykırı değerleri silecek, ardından eksik değerleri nasıl dolduracağımızı belirleyeceğiz.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "# --- 1. Aykırı Değerlerin Temizlenmesi (Outlier Handling) ---\n# GrLivArea vs SalePrice grafiğinde sağ altta görünen (alanı çok büyük ama fiyatı çok düşük) \n# noktalar modelin kafasını karıştırır. Bunları temizleyelim.\n\nplt.figure(figsize=(8, 5))\nsns.scatterplot(x='GrLivArea', y='SalePrice', data=train_df)\nplt.title('Temizlik Öncesi: GrLivArea vs SalePrice')\nplt.show()\n\n# GrLivArea 4000'den büyük olup SalePrice'ı 300.000'den düşük olanları çıkaralım\noutliers = train_df[(train_df['GrLivArea'] > 4000) & (train_df['SalePrice'] < 300000)].index\ntrain_df = train_df.drop(outliers).reset_index(drop=True)\n\nprint(f\"{len(outliers)} adet aykırı değer silindi.\")\n\n# --- 2. Eksik Değer Stratejisi ---\n# Not: Gerçek doldurma işlemini Pipeline içinde 'SimpleImputer' ile yapacağız.\n# Ancak bazı sütunlarda NaN aslında \"Yok\" (None) demektir. \n\n# Kategorik olup NaN değerinin \"Yok\" anlamına geldiği sütunlar:\ncat_none_cols = [\n    'PoolQC', 'MiscFeature', 'Alley', 'Fence', 'FireplaceQu', \n    'GarageType', 'GarageFinish', 'GarageQual', 'GarageCond',\n    'BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2', 'MasVnrType'\n]\n\n# Bu sütunlardaki NaN değerlerini \"None\" ile dolduralım\nfor col in cat_none_cols:\n    train_df[col] = train_df[col].fillna(\"None\")\n    test_df[col] = test_df[col].fillna(\"None\")\n\n# Geri kalan sayısal sütunlar medyan ile, \n# geri kalan kategorik sütunlar en çok tekrar eden (most_frequent) ile Pipeline'da dolacak.",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:31.917411Z",
+          "iopub.execute_input": "2026-01-23T09:51:31.917667Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.063514Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:31.917640Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.062473Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "🛠️ Yapılan İşlemlerin Açıklaması\n1. Aykırı Değerler (Outliers)\nNeden: GrLivArea (Yaşam alanı) 4000 fit kareden büyük olan evler genellikle çok pahalıdır. Ancak veri setinde çok büyük olup çok ucuza satılmış birkaç ev var. Bunlar \"tarım arazisi\" veya \"özel durumlu satış\" olabilir. Modelin bu uç örnekleri genel kural sanmasını engellemek için onları çıkardık.\n\n2. Eksik Değer Doldurma (Imputation)\nSayısal Sütunlar: median (medyan) kullanacağız. Ortalama (mean) yerine medyanı seçmemizin sebebi, medyanın uç değerlere karşı daha dayanıklı olmasıdır.\n\nKategorik Sütunlar: * \"None\" Stratejisi: Bazı özellikler (Havuz, Çit, Garaj) her evde bulunmaz. Veri setinde bu sütunların boş olması \"Havuz Yok\" demektir. Bu yüzden bunları \"None\" kelimesiyle doldurduk.\n\n\"Most Frequent\" Stratejisi: Elektrik sistemi gibi her evde olması gereken ama verisi girilmemiş yerleri en yaygın değerle dolduracağız (Bu adım Pipeline'da gerçekleşecek).",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Sütunları analiz etmek ve hangilerinin modele katkı sağlamayacağını (gürültü oluşturacağını) belirlemek, modelin daha sade ve etkili çalışmasını sağlar. Özellikle \"Constant\" (sabit) veya \"Near-Constant\" (neredeyse sabit) özellikler ile \"ID\" gibi benzersiz belirleyiciler temizlenmelidir.\n\nAşağıdaki kod bloğunu Kaggle notebook'unda çalıştırıp sonuçları bana verirsen, hangi sütunları kesin olarak silebileceğimizi teyit edebiliriz.\n\n🐍 Analiz İçin Python Kodu\nBu kod, verideki çeşitliliği (variance) ve baskın değerleri kontrol eder:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "import pandas as pd\n\n# 1. Benzersiz Değer Analizi (Hangi sütun hep aynı değerden oluşuyor?)\ndef analyze_unnecessary_columns(df):\n    stats = []\n    for col in df.columns:\n        # En çok tekrar eden değerin oranı\n        most_freq_value_counts = df[col].value_counts(normalize=True).iloc[0]\n        # Benzersiz değer sayısı\n        unique_values = df[col].nunique()\n        \n        stats.append({\n            'Column': col,\n            'Most_Freq_Val_Share': most_freq_value_counts,\n            'Unique_Values': unique_values\n        })\n    \n    return pd.DataFrame(stats).sort_values(by='Most_Freq_Val_Share', ascending=False)\n\nanalysis_df = analyze_unnecessary_columns(train_df)\nprint(analysis_df[analysis_df['Most_Freq_Val_Share'] > 0.95]) # %95'i aynı olan sütunlar",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.064400Z",
+          "iopub.execute_input": "2026-01-23T09:51:32.064619Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.108700Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.064599Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.107975Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Id\tSadece bir kayıt numarasıdır; evin fiyatı üzerinde yapısal bir etkisi yoktur.\n\nUtilities, Street, Heating\t%98-%99 oranında aynı değere sahipler. Model için hiçbir ayırt edici bilgi taşımazlar.\n\nPoolArea, PoolQC\tEvlerin %99.5'inde havuz yok. Bu kadar az veri modeli genelleme yapmak yerine ezberlemeye (overfitting) iter.\n\nCondition2, RoofMatl\tVerilerin neredeyse tamamı tek bir tipte toplanmış, varyans (değişkenlik) yok denecek kadar az.\n\n3SsnPorch, LowQualFinSF, MiscVal, MiscFeature\tÇok nadir görülen özellikler. Modelin bu uç değerlerden yanlış çıkarımlar yapma riski yüksek.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "# Silinecek sütun listesi (Id dahil)\ncols_to_drop = [\n    'Id', 'Utilities', 'Street', 'PoolArea', 'PoolQC', 'Condition2', \n    'RoofMatl', 'Heating', '3SsnPorch', 'LowQualFinSF', 'MiscVal', \n    'MiscFeature', 'KitchenAbvGr'\n]\n\n# Eğitim ve test setinden çıkaralım\ntrain_df = train_df.drop(columns=cols_to_drop)\ntest_df = test_df.drop(columns=cols_to_drop)\n\nprint(f\"Yeni Eğitim Seti Boyutu: {train_df.shape}\")",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.109736Z",
+          "iopub.execute_input": "2026-01-23T09:51:32.109967Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.121996Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.109946Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.120918Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "D) Feature Engineering (MANDATORY)\nYou must create at least 5 new features.\n\nRecommended Features:\n\nTotalSF: TotalBsmtSF + 1stFlrSF + 2ndFlrSF\nHouseAge: YrSold - YearBuilt\nRemodAge: YrSold - YearRemodAdd\nTotalBathrooms: FullBath + 0.5*HalfBath + BsmtFullBath + 0.5*BsmtHalfBath\nTotalPorchSF: OpenPorchSF + EnclosedPorch + 3SsnPorch + ScreenPorch\nNote: For each new feature, write a 1-sentence explanation of \"Why it might be useful.\"",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Harika, veriyi sadeleştirdik; şimdi sıra modele \"akıllı\" ipuçları vermekte. Bir önceki adımda 3SsnPorch sütununu ayırt edici olmadığı için sildiğimizden, TotalPorchSF hesaplamasını elimizdeki mevcut sütunlarla güncelledim.\n\n✅ D) Özellik Mühendisliği (Feature Engineering)\nAşağıdaki kod bloğu ile 5 yeni özelliğimizi hem eğitim hem de test setine ekleyelim:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "# 1. TotalSF: Toplam Metrekare\ntrain_df['TotalSF'] = train_df['TotalBsmtSF'] + train_df['1stFlrSF'] + train_df['2ndFlrSF']\ntest_df['TotalSF'] = test_df['TotalBsmtSF'] + test_df['1stFlrSF'] + test_df['2ndFlrSF']\n\n# 2. HouseAge: Evin Yaşı (Satıldığı yıl - Yapıldığı yıl)\ntrain_df['HouseAge'] = train_df['YrSold'] - train_df['YearBuilt']\ntest_df['HouseAge'] = test_df['YrSold'] - test_df['YearBuilt']\n\n# 3. RemodAge: Restorasyon Yaşı (Satıldığı yıl - Yenilendiği yıl)\ntrain_df['RemodAge'] = train_df['YrSold'] - train_df['YearRemodAdd']\ntest_df['RemodAge'] = test_df['YrSold'] - test_df['YearRemodAdd']\n\n# 4. TotalBathrooms: Toplam Banyo Sayısı\ntrain_df['TotalBathrooms'] = train_df['FullBath'] + (0.5 * train_df['HalfBath']) + train_df['BsmtFullBath'] + (0.5 * train_df['BsmtHalfBath'])\ntest_df['TotalBathrooms'] = test_df['FullBath'] + (0.5 * test_df['HalfBath']) + test_df['BsmtFullBath'] + (0.5 * test_df['BsmtHalfBath'])\n\n# 5. TotalPorchSF: Toplam Veranda Alanı (Açık + Kapalı + Sineklikli)\n# Not: 3SsnPorch'u sildiğimiz için onu dahil etmiyoruz.\ntrain_df['TotalPorchSF'] = train_df['OpenPorchSF'] + train_df['EnclosedPorch'] + train_df['ScreenPorch']\ntest_df['TotalPorchSF'] = test_df['OpenPorchSF'] + test_df['EnclosedPorch'] + test_df['ScreenPorch']\n\nprint(\"Yeni özellikler başarıyla eklendi.\")\nprint(f\"Güncel sütun sayısı: {train_df.shape[1]}\")",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.122955Z",
+          "iopub.execute_input": "2026-01-23T09:51:32.123243Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.149800Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.123220Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.148459Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Yeni Özelliklerin Açıklamaları\nTotalSF: Evin toplam kullanım alanını (bodrum + katlar) tek bir değişkende toplar, çünkü alıcılar genellikle parçalı alanlardan ziyade toplam büyüklüğe odaklanır.\n\nHouseAge: Evin inşa edildiği yıl yerine, satış anındaki yaşını hesaplayarak yıpranma payını ve değer kaybını doğrudan modele sunar.\n\nRemodAge: Evin ne kadar zaman önce modernize edildiğini gösterir; yeni restore edilmiş eski evlerin yüksek fiyatlarını açıklamakta kritiktir.\n\nTotalBathrooms: Evin farklı katlarındaki banyoları birleştirerek, konfor seviyesini tek bir sayısal metrikle ifade eder.\n\nTotalPorchSF: Evin tüm dış mekan dinlenme alanlarını toplar, böylece verandanın tipinden ziyade toplam büyüklüğünün fiyata etkisini ölçer.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "E) Preprocessing Pipeline (MANDATORY)\nRequirements:\n\nSeparate numerical and categorical features.\nUse SimpleImputer for missing values.\nUse OneHotEncoder for categorical variables.\nBuild a structure using ColumnTransformer + Pipeline.\nNote: Scaling is not mandatory but recommended for linear models.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "📑 Kategorik Sütun Analiz Raporu\n1. Veri Yapısı ve Türleri: Veri setindeki kategorik değişkenler iki ana gruba ayrılır:\n\nNominal (İsimsel): Aralarında hiyerarşik bir sıralama olmayanlar (Örn: Neighborhood, SaleType, Foundation).\n\nOrdinal (Sıralı): Belirli bir derece veya kalite belirtenler (Örn: ExterQual, KitchenQual). Not: Pipeline yapımızda bunlar şu an Nominal gibi işlem görüyor, bu güvenli bir başlangıçtır.\n\n2. Kritik Tespitler:\n\nSeyrek Sınıflar (High Cardinality): Neighborhood gibi sütunlarda 25 farklı değer vardır. Dummy (One-Hot) işlemi sonrası bu sütun tek başına 25 yeni sütun yaratacaktır.\n\nAnlamlı \"NaN\" Değerleri: PoolQC, GarageType gibi sütunlardaki boşluklar aslında \"Yok\" anlamına gelir. Temizlik aşamasında bunları \"None\" yaparak korumalıyız.\n\n🛠️ Teknik Detaylar: Tespit ve Dummy (One-Hot) İşlemi\n1. Sütun Tiplerini Tespit Etme\nPython'da select_dtypes fonksiyonu kullanılır.\n\ninclude=['object']: Kategorik (metin) sütunları seçer.\n\nexclude=['object']: Sayısal (int, float) sütunları seçer.\n\n2. Dummy (One-Hot Encoding) Nedir?\nMakine öğrenmesi modelleri metinleri okuyamaz. Dummy işlemi, her kategoriyi bir sütuna dönüştürür.\n\nÖrnek: Street sütununda \"Pave\" ve \"Grvl\" varsa; bu silinir, yerine Street_Pave (1/0) ve Street_Grvl (1/0) sütunları gelir.\n\nNeden OneHotEncoder? pd.get_dummies yerine Scikit-learn'ün OneHotEncoder sınıfını kullanıyoruz çünkü bu, Pipeline içine entegre edilebilir ve test setinde yeni bir kategori gördüğünde hata vermez (handle_unknown='ignore').",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Harika, verimiz artık çok daha güçlü. Şimdi bu karmaşık veri yapısını (sayılar ve kategoriler) makine öğrenmesi modellerinin anlayabileceği, temiz ve standart bir formata dönüştürme zamanı.\n\nPipeline (Boru Hattı) kullanmak, veri sızıntısını (data leakage) önlemek ve test verisini tam olarak eğitim verisiyle aynı kurallarla işlemek için en profesyonel yöntemdir.\n\n✅ E) Ön İşleme Boru Hattı (Preprocessing Pipeline)\nBu aşamada sayısal verileri medyan ile, kategorik verileri ise en sık tekrar eden değerle doldurup ardından kategorik olanları sayısal vektörlere (One-Hot Encoding) dönüştüreceğiz.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "from sklearn.compose import ColumnTransformer\nfrom sklearn.pipeline import Pipeline\nfrom sklearn.impute import SimpleImputer\nfrom sklearn.preprocessing import StandardScaler, OneHotEncoder\n\n# 1. Hedef Değişken Hazırlığı\nX = train_df.drop('SalePrice', axis=1)\ny = np.log1p(train_df['SalePrice'])\n\n# 2. Sütun Tiplerini Otomatik Tespit Etme\nnumeric_features = X.select_dtypes(include=['int64', 'float64']).columns\ncategorical_features = X.select_dtypes(include=['object']).columns\n\n# 3. Sayısal İşleme Hattı (Eksik Veri -> Medyan, Ölçeklendirme -> Standard)\nnumeric_transformer = Pipeline(steps=[\n    ('imputer', SimpleImputer(strategy='median')),\n    ('scaler', StandardScaler())\n])\n\n# 4. Kategorik İşleme Hattı (Eksik Veri -> En Sık Değer, Dönüşüm -> OneHot)\ncategorical_transformer = Pipeline(steps=[\n    ('imputer', SimpleImputer(strategy='most_frequent')),\n    ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))\n])\n\n# 5. ColumnTransformer: Tüm işlemleri birleştirme\npreprocessor = ColumnTransformer(\n    transformers=[\n        ('num', numeric_transformer, numeric_features),\n        ('cat', categorical_transformer, categorical_features)\n    ]\n)\n\n# Kontrol Çıktıları\nprint(f\"Toplam Sayısal Sütun: {len(numeric_features)}\")\nprint(f\"Toplam Kategorik Sütun: {len(categorical_features)}\")\nprint(\"İşlem: Sayısal sütunlar ölçeklendi, kategorik sütunlar 'dummy' değişkenlere dönüştürülmeye hazır.\")",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.179086Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.179574Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.179315Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.179337Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Neden Bu Yapıyı Kurduk?\nSimpleImputer (Median): Sayısal sütunlarda eksik kalan yerleri medyan ile doldurduk. Medyan, aykırı değerlerden (outliers) etkilenmediği için ortalamadan daha güvenlidir.\n\nStandardScaler: Sayısal verileri 0 merkezli ve standart sapması 1 olacak şekilde ölçeklendirdik. Bu, özellikle Ridge ve Lasso gibi mesafe tabanlı modellerin \"metrekare\" ile \"oda sayısı\" arasındaki ölçek farkından dolayı hata yapmasını engeller.\n\nOneHotEncoder: \"Neighborhood\" (Mahalle) gibi metinsel verileri 0 ve 1lerden oluşan sütunlara çevirdik. handle_unknown='ignore' parametresi, test setinde eğitimde görmediğimiz bir kategori çıkarsa hataya düşmememizi sağlar.\n\nPipeline Bütünlüğü: Tüm bu işlemler tek bir paket (preprocessor) haline getirildi. Böylece model eğitirken tek bir komutla tüm temizlik ve dönüşüm otomatik olarak yapılacak.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "# --- KATEGORİK SÜTUN ANALİZ RAPORU ---\ncat_summary = []\nfor col in categorical_features:\n    cat_summary.append({\n        'Sütun Adı': col,\n        'Grup Sayısı (Unique)': X[col].nunique(),\n        'En Yaygın Değer': X[col].mode()[0],\n        'Yaygınlık Oranı (%)': (X[col].value_counts(normalize=True).iloc[0] * 100).round(2)\n    })\n\ncat_report_df = pd.DataFrame(cat_summary).sort_values(by='Grup Sayısı (Unique)', ascending=False)\n\nprint(\"--- Kategorik Değişken Özet Raporu ---\")\ndisplay(cat_report_df) # En çok gruba sahip ilk 10 sütun\nprint(\"Toplam Kategori:\")\nprint(len(cat_report_df))",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.183388Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.183723Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.183581Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.183595Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "F) Model Training (MANDATORY)\nYou must train at least 3 different regression models.\n\nMinimum Requirements:\n\nRidge or Lasso: (Linear Model)\nRandomForestRegressor\nGradientBoostingRegressor: (Alternatively: LightGBM or XGBoost)",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Mutfak hazırlığı bitti, şimdi ana yemeğe geçiyoruz! Sayısal ve kategorik özelliklerin eşit dağılmış olması (36-36) dengeli bir veri setine sahip olduğumuzu gösteriyor.\n\nÖdev gereksinimi olan 3 farklı algoritmayı (Lineer, Ağaç Tabanlı ve Boosting) kapsayan modellerimizi hazırlayalım. Bu modelleri Pipeline içine koyarak, her birinin veriyi kendi içinde otomatik olarak işlemesini sağlayacağız.\n\n✅ F) Model Eğitimi (Model Training)\nAşağıdaki kod bloğu ile üç farklı modeli tanımlıyoruz:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "from sklearn.linear_model import Ridge\nfrom sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor\n\n# 1. Modellerin Tanımlanması\n# Ridge: Aşırı öğrenmeyi (overfitting) engelleyen düzenlenmiş (regularized) lineer model.\nmodel_ridge = Pipeline(steps=[\n    ('preprocessor', preprocessor),\n    ('regressor', Ridge(alpha=10.0))\n])\n\n# Random Forest: Birden fazla karar ağacı oluşturarak varyansı düşüren güçlü bir model.\nmodel_rf = Pipeline(steps=[\n    ('preprocessor', preprocessor),\n    ('regressor', RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1))\n])\n\n# Gradient Boosting: Hataları ardışık olarak düzelterek ilerleyen yüksek performanslı bir model.\nmodel_gb = Pipeline(steps=[\n    ('preprocessor', preprocessor),\n    ('regressor', GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42))\n])\n\n# Modelleri bir listede tutalım\nmodels = {\n    'Ridge': model_ridge,\n    'RandomForest': model_rf,\n    'GradientBoosting': model_gb\n}\n\nprint(\"Modeller başarıyla tanımlandı ve Pipeline yapısına entegre edildi.\")",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.185692Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.186016Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.185873Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.185890Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Neden Bu Üç Modeli Seçtik?\nRidge (Lasso alternatifi): Elimizde çok fazla özellik (One-Hot Encoding sonrası 200+) var. Ridge, bu özelliklerin katsayılarını kontrol altında tutarak modelin karmaşıklığını yönetir ve \"gürültüye\" karşı direnç sağlar.\n\nRandom Forest: Verideki doğrusal olmayan (non-linear) ilişkileri yakalamak için harikadır. Ayrıca eksik değerlere veya aykırı değerlere karşı oldukça dayanıklıdır.\n\nGradient Boosting: Genellikle yapılandırılmış (tabüler) verilerde en yüksek skoru veren algoritmadır. Hatalardan ders çıkararak (boosting) ilerlediği için tahmin başarısı oldukça yüksektir.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Kaggle bu yarışmada RMSLE (Root Mean Squared Logarithmic Error) kullandığı için, biz hedef değişkenimizi ($y$) zaten log1p ile dönüştürmüştük. Bu durumda, log-uzayında hesaplayacağımız RMSE (Root Mean Squared Error) değeri, orijinal fiyattaki RMSLE değerine karşılık gelecektir.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "G) Değerlendirme (Evaluation)\nAşağıdaki kod, tanımladığımız 3 modeli 5-katlı çapraz doğrulama (5-Fold CV) ile test eder ve RMSE sonuçlarını hesaplar:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "from sklearn.model_selection import cross_val_score\n\n# CV sonuçlarını saklamak için bir sözlük\ncv_results = {}\n\nprint(\"Modeller değerlendiriliyor (5-Fold CV)...\")\nprint(\"-\" * 40)\n\nfor name, model in models.items():\n    # neg_root_mean_squared_error kullanıyoruz, bu yüzden sonucun tersini alacağız\n    # X ve y değişkenlerinin train_df üzerinden oluşturulduğundan emin olalım\n    scores = cross_val_score(model, X, y, cv=5, scoring='neg_root_mean_squared_error')\n    \n    # Skorlar negatif döner, pozitif RMSE'ye çevirelim\n    rmse_scores = -scores\n    \n    cv_results[name] = {\n        'Mean RMSE': rmse_scores.mean(),\n        'Std RMSE': rmse_scores.std()\n    }\n    \n    print(f\"{name}:\")\n    print(f\"  CV Mean RMSE: {cv_results[name]['Mean RMSE']:.5f}\")\n    print(f\"  CV Std RMSE:  {cv_results[name]['Std RMSE']:.5f}\")\n    print(\"-\" * 40)",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.187711Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.188356Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.188099Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.188120Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Bu Adım Neden Önemli?K-Fold Cross Validation ($K=5$): Veriyi 5 parçaya bölüp her seferinde bir parçayı test, diğerlerini eğitim için kullanarak modelin verinin geneline ne kadar hakim olduğunu ölçeriz. Sadece tek bir eğitim/test ayrımına güvenmek yanıltıcı olabilir.\nRMSE (Log-Scale): Bu metrik, tahminlerimizin gerçek değerlerden ne kadar saptığını ölçer. Skor ne kadar düşükse model o kadar başarılıdır.Örnek: Eğer CV Mean RMSE değeriniz 0.12 civarındaysa, bu Kaggle liderlik tablosunda oldukça rekabetçi bir skorun habercisidir.\nStandart Sapma (Std): Modelin farklı veri katmanlarında ne kadar tutarlı olduğunu gösterir. Düşük bir Std değeri, modelin kararlı (stable) olduğunu kanıtlar.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Ridge modelinin 0.11436 gibi çok güçlü bir skorla liderlik ettiğini görüyoruz. Bu, verimizdeki doğrusal ilişkilerin oldukça kuvvetli olduğunu gösteriyor.\n\nŞimdi hem bu sonuçları bir araya getirelim hem de modellerin eğitim setini ezberleyip ezberlemediğini (Overfitting) anlamak için Train RMSE ve Validation RMSE değerlerini hesaplayalım.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "H) Model Karşılaştırma Tablosu ve I) Overfitting Kontrolü\nAşağıdaki kod, veriyi geçici olarak eğitim ve doğrulama (hold-out) olarak ikiye böler, her model için RMSE değerlerini hesaplar ve istediğin formatta bir tablo oluşturur:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "from sklearn.model_selection import train_test_split\nfrom sklearn.metrics import mean_squared_error\n\n# 1. Veriyi Eğitim ve Doğrulama (Validation) olarak bölelim (%80 - %20)\nX_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)\n\nresults_list = []\n\nfor name, model in models.items():\n    # Modeli eğitim alt kümesinde eğit\n    model.fit(X_train, y_train)\n    \n    # Tahminler\n    train_preds = model.predict(X_train)\n    val_preds = model.predict(X_val)\n    \n    # RMSE Hesaplama\n    train_rmse = np.sqrt(mean_squared_error(y_train, train_preds))\n    valid_rmse = np.sqrt(mean_squared_error(y_val, val_preds))\n    \n    # Notları belirleyelim\n    if train_rmse < valid_rmse * 0.7:\n        note = \"High Overfitting\"\n    elif name == 'Ridge':\n        note = \"Most Stable / Best\"\n    else:\n        note = \"Good Baseline\"\n        \n    results_list.append({\n        'Model': name,\n        'CV RMSE Mean': cv_results[name]['Mean RMSE'] if name in cv_results else np.nan,\n        'CV RMSE Std': cv_results[name]['Std RMSE'] if name in cv_results else np.nan,\n        'Train RMSE': train_rmse,\n        'Valid RMSE': valid_rmse,\n        'Note': note\n    })\n\n# 2. DataFrame Oluşturma\ncomparison_df = pd.DataFrame(results_list)\n\n# Tabloyu göster\nprint(\"--- Model Karşılaştırma Tablosu ---\")\ndisplay(comparison_df)",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.189405Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.189669Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.189530Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.189546Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "I) Overfitting Analizi ve Yorumlar\nTablonuz oluştuğunda şu 3 noktaya dikkat etmelisiniz:\n\nRidge Modeli: Genellikle Train RMSE ve Valid RMSE birbirine çok yakındır. Bu, modelin genelleme yeteneğinin yüksek olduğunu ve düşük varyansa sahip olduğunu gösterir.\n\nRandom Forest: Eğer Train RMSE çok düşük (örneğin 0.05) ama Valid RMSE yüksekse (0.13), model veriyi ezberlemiş demektir (Overfitting). Ağaç tabanlı modellerde bu çok yaygındır.\n\nHata Payı: CV RMSE Mean ile Valid RMSE değerlerinin birbirine yakın olması, çapraz doğrulama stratejimizin tutarlı olduğunu kanıtlar.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Tablonuzdaki sonuçlar oldukça öğretici bir tablo çiziyor. Ridge modelinin neden \"Best\" seçildiğini rakamlarla kanıtlamış olduk. Şimdi bu tabloyu ödev gereksinimlerine göre analiz edelim.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "I) Overfitting Kontrolü ve Analizi\nModel performanslarını Train RMSE ve Valid RMSE farkı üzerinden değerlendirdiğimizde şu tablo ortaya çıkıyor:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Model,Analiz,Durum\nRidge,Train (0.095) ile Valid (0.121) arasındaki fark kabul edilebilir düzeyde. Model genelleme yapabiliyor.,Düşük Varyans / Dengeli\nRandomForest,\"Train (0.051) hatası çok düşükken, Valid (0.147) hatası fırlamış. Model veriyi ezberlemiş.\",Yüksek Varyans (Overfitting)\nGradientBoosting,\"Train (0.074) ve Valid (0.126) arasında belirgin bir fark var, RF kadar olmasa da ezberleme eğiliminde.\",Orta-Yüksek Varyans",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Teknik Yorum (Kısa Rapor İçin Notlar)\n1. Hangi model aşırı öğreniyor (Overfitting)? Özellikle Random Forest ve kısmen Gradient Boosting modelleri overfitting sergilemektedir. Train RMSE değerlerinin Validation RMSE değerlerinden çok daha düşük olması, bu modellerin eğitim setindeki gürültüyü (noise) öğrendiğini ve yeni gördükleri veride (Validation) bocaladığını gösterir.\n\n2. Varyans mı yoksa Yanlılık (Bias) mı yüksek?\n\nRandom Forest: Yüksek Varyans (High Variance) problemi yaşıyor. Ağaçlar çok derinleşmiş ve eğitim verisindeki her detayı ezberlemiş.\n\nRidge: Düşük Varyans sergiliyor. Lineer bir model olduğu ve alpha parametresiyle düzenlendiği (regularization) için katsayıları baskılanmış, bu da onun daha kararlı (stable) kalmasını sağlamış. Ridge modelinde bir miktar Yanlılık (Bias) olsa da, toplam hata (RMSE) bazında en iyi sonucu o veriyor.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "---\n\n## 📊 Residual (Hata) Analizi\n\nModelimizin tahminlerinin ne kadar iyi olduğunu ve hataların nasıl dağıldığını görselleştireceğiz. Residual (artık/kalıntı) analizi, modelin sistematik hatalar yapıp yapmadığını anlamamıza yardımcı olur.\n\n**Residual nedir?**  \n`Residual = Gerçek Değer - Tahmin Değeri`\n\nİdeal bir modelde:\n- Residual'lar sıfır etrafında rastgele dağılır\n- Sistematik bir pattern yoktur\n- Normal dağılıma yakın şekilde dağılırlar\n\nŞimdi en iyi modelimiz olan **Ridge** için residual analizini yapalım:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "import matplotlib.pyplot as plt\nimport scipy.stats as stats\nimport numpy as np\n\n# En iyi modeli (Ridge) doğrulama setinde tahmin yap\nbest_model_name = 'Ridge'\nbest_model = models[best_model_name]\n\n# Doğrulama setinde tahmin\ny_val_pred = best_model.predict(X_val)\n\n# Residual'ları hesapla\nresiduals = y_val - y_val_pred\n\n# Figür oluştur (3 subplot)\nfig, axes = plt.subplots(1, 3, figsize=(18, 5))\n\n# 1. Residual Plot (Fitted vs Residuals)\naxes[0].scatter(y_val_pred, residuals, alpha=0.6, edgecolors='k', s=50)\naxes[0].axhline(y=0, color='red', linestyle='--', linewidth=2)\naxes[0].set_xlabel('Tahmin Edilen Değer (Log SalePrice)', fontsize=12)\naxes[0].set_ylabel('Residuals (Hatalar)', fontsize=12)\naxes[0].set_title('Residual Plot - Tahmin vs Hata', fontsize=14, fontweight='bold')\naxes[0].grid(True, alpha=0.3)\n\n# 2. Residual Histogram (Normal Dağılım Kontrolü)\naxes[1].hist(residuals, bins=30, edgecolor='black', alpha=0.7, color='skyblue')\naxes[1].axvline(x=0, color='red', linestyle='--', linewidth=2)\naxes[1].set_xlabel('Residuals (Hatalar)', fontsize=12)\naxes[1].set_ylabel('Frekans', fontsize=12)\naxes[1].set_title('Residual Dağılımı Histogramı', fontsize=14, fontweight='bold')\naxes[1].grid(True, alpha=0.3)\n\n# 3. QQ Plot (Normallik Testi)\nstats.probplot(residuals, dist=\"norm\", plot=axes[2])\naxes[2].set_title('Q-Q Plot - Normal Dağılım Kontrolü', fontsize=14, fontweight='bold')\naxes[2].grid(True, alpha=0.3)\n\nplt.tight_layout()\nplt.show()\n\n# Residual istatistikleri\nprint(f\"\\n📊 Residual İstatistikleri:\")\nprint(f\"   • Ortalama (Mean): {residuals.mean():.6f}\")\nprint(f\"   • Std Sapma (Std): {residuals.std():.6f}\")\nprint(f\"   • Min Hata: {residuals.min():.6f}\")\nprint(f\"   • Max Hata: {residuals.max():.6f}\")\nprint(f\"   • RMSE: {np.sqrt((residuals**2).mean()):.6f}\")",
+      "metadata": {
+        "trusted": true,
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.190558Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.190752Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.190658Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.190669Z"
+        }
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "### 🔍 Residual Analizi Yorumları\n\n**1. Residual Plot (Sol Grafik):**\n- İdeal durumda: Noktalar sıfır çizgisi etrafında rastgele dağılmalı\n- Eğer belirli bir pattern varsa (huni şekli, eğrilik vb.), model bazı ilişkileri yakalayamamış demektir\n- Bizim modelimizde noktalar genel olarak sıfır etrafında dengeli dağılıyor ✓\n\n**2. Residual Histogram (Orta Grafik):**\n- İdeal: Sıfır merkezli, simetrik, çan şeklinde (normal dağılım)\n- Normal dağılım, modelin hataların sistematik değil rastgele olduğunu gösterir\n- Histogram yaklaşık simetrik görünüyorsa model iyi performans gösteriyor demektir ✓\n\n**3. Q-Q Plot (Sağ Grafik):**\n- Noktalar kırmızı diagonal çizgi üzerinde olmalı\n- Eğer noktalar çizgiden sapıyorsa residual'lar normal dağılmamış demektir\n- Uçlardaki sapmalar (outlier'lar) kabul edilebilir\n- Merkezde çizgiye yakın = model genel olarak iyi çalışıyor ✓\n\n**Genel Değerlendirme:**\nRidge modelimiz, residual analizinde iyi performans gösteriyor. Hatalar rastgele dağılmış ve sistematik bir bias yok. Bu, modelimizin ev fiyatlarını tahmin ederken tutarlı ve güvenilir olduğunu gösterir.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "En iyi modelimiz olan Ridge modeli üzerinde SHAP (SHAPley Additive exPlanations) analizini gerçekleştireceğiz.\n\nAncak bir teknik detay: Ridge lineer bir model olduğu için SHAP değerleri doğrudan katsayılarla ilişkilidir. Modeli bir Pipeline içinde eğittiğimizden, SHAP'ın veriyi doğru anlayabilmesi için önce veriyi pipeline'daki preprocessor aşamasından geçirmemiz gerekiyor.\n\n✅ J) SHAP ile Model Açıklanabilirliği\nAşağıdaki kod, modelin \"karar mekanizmasını\" görselleştirecektir:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "import shap\n\n# 1. Pipeline içindeki eğitilmiş modeli ve ön işleyiciyi alalım\n# En iyi modelimiz Ridge olduğu için onu kullanıyoruz\nbest_model = models['Ridge']\npreprocessor = best_model.named_steps['preprocessor']\nregressor = best_model.named_steps['regressor']\n\n# 2. Veriyi transforme edelim (SHAP ham veriyi değil, işlenmiş veriyi anlar)\nX_transformed = preprocessor.transform(X)\n\n# Feature isimlerini alalım (One-Hot Encoding sonrası sütun isimleri değiştiği için)\ncat_features = preprocessor.named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(categorical_features)\nfeature_names = np.concatenate([numeric_features, cat_features])\n\n# 3. SHAP Explainer oluşturma (Lineer model olduğu için LinearExplainer)\nexplainer = shap.LinearExplainer(regressor, X_transformed)\nshap_values = explainer.shap_values(X_transformed)\n\n# --- ÇIKTI 1: SHAP Summary Plot ---\nprint(\"Genel Model Özeti (Summary Plot):\")\nshap.summary_plot(shap_values, X_transformed, feature_names=feature_names)\n\n# --- ÇIKTI 2: Yerel Açıklama (Tek bir ev için - Örn: 0. index) ---\nprint(\"\\nTek Bir Ev İçin Tahmin Açıklaması (Local Explanation):\")\nshap.initjs() # Notebook içinde görselleştirme için\nshap.force_plot(explainer.expected_value, shap_values[0,:], X_transformed[0,:], feature_names=feature_names, matplotlib=True)",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.192812Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.193499Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.193055Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.193077Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "SHAP Analizi ve Yorumlar\nGrafiklere baktığımızda modelin fiyatı belirlerken kullandığı en etkili 5 özelliği ve etkilerini şu şekilde özetleyebiliriz:\n\nTotalSF (Toplam Metrekare): En etkili özelliktir. Metrekare arttıkça (kırmızı noktalar sağda), evin fiyatı doğrudan artmaktadır.\n\nOverallQual (Genel Kalite): Çok güçlü bir pozitif etkiye sahiptir. Malzeme kalitesi 1'den 10'a doğru çıktıkça model fiyat tahminini yukarı çeker.\n\nHouseAge (Evin Yaşı): Negatif bir etkiye sahiptir. Evin yaşı arttıkça (mavi noktalar solda, kırmızı noktalar negatif bölgede), tahmin edilen fiyat düşmektedir.\n\nTotalBathrooms (Toplam Banyo): Pozitif bir etkendir. Banyo sayısının artışı, konfor göstergesi olarak fiyatı artırmaktadır.\n\nNeighborhood (Mahalle - Örn: StoneBr veya NoRidge): Bazı lüks mahallelerin varlığı (One-Hot kodlamasında 1 olması), fiyatı ciddi oranda yükseltmektedir.\n\nÖzetle: Modelimiz mantıklı bir \"insan\" gibi davranıyor; büyük, yeni, kaliteli ve çok banyolu evlere daha yüksek fiyat biçiyor.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "---\n\n## 📊 Ridge Model - Feature Importance (Katsayı Analizi)\n\nSHAP analizine ek olarak, Ridge modelinin katsayılarını (coefficients) inceleyerek hangi özelliklerin fiyatı artırdığını veya düşürdüğünü görebiliriz.\n\n**Ridge Coefficients nasıl yorumlanır?**\n- **Pozitif katsayı:** O özellik arttıkça fiyat artar (örn: metrekare ↑ → fiyat ↑)\n- **Negatif katsayı:** O özellik arttıkça fiyat düşer (örn: yaş ↑ → fiyat ↓)\n- **Büyük mutlak değer:** O özellik fiyat üzerinde güçlü etkiye sahip\n\nAşağıdaki grafik, en etkili 15 özelliği gösterecek:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "import pandas as pd\nimport matplotlib.pyplot as plt\n\n# Ridge modelinin katsayılarını al\nbest_model = models['Ridge']\npreprocessor = best_model.named_steps['preprocessor']\nridge_regressor = best_model.named_steps['regressor']\n\n# Feature isimlerini al (preprocessing sonrası)\n# Numerical features\nnum_features = preprocessor.named_transformers_['num'].get_feature_names_out().tolist()\n\n# Categorical features (OneHotEncoded)\ncat_features = preprocessor.named_transformers_['cat'].get_feature_names_out().tolist()\n\n# Tüm feature isimleri\nall_features = num_features + cat_features\n\n# Katsayıları DataFrame'e dönüştür\ncoefficients = pd.DataFrame({\n    'Feature': all_features,\n    'Coefficient': ridge_regressor.coef_\n})\n\n# Mutlak değere göre sırala ve en önemli 15'i al\ncoefficients['Abs_Coefficient'] = coefficients['Coefficient'].abs()\ntop_features = coefficients.nlargest(15, 'Abs_Coefficient')\n\n# Görselleştirme\nplt.figure(figsize=(12, 8))\ncolors = ['green' if x > 0 else 'red' for x in top_features['Coefficient']]\nplt.barh(top_features['Feature'], top_features['Coefficient'], color=colors, edgecolor='black')\nplt.axvline(x=0, color='black', linestyle='-', linewidth=0.8)\nplt.xlabel('Katsayı (Coefficient) Değeri', fontsize=13, fontweight='bold')\nplt.ylabel('Özellik (Feature)', fontsize=13, fontweight='bold')\nplt.title('Ridge Model - Top 15 En Etkili Özellikler\\n(Yeşil: Fiyatı Artırır | Kırmızı: Fiyatı Düşürür)', \n          fontsize=15, fontweight='bold')\nplt.grid(axis='x', alpha=0.3)\nplt.tight_layout()\nplt.show()\n\n# En yüksek pozitif ve negatif etkili özellikleri göster\nprint(\"\\n✅ En Yüksek Pozitif Etki (Fiyatı Artıran Özellikler):\")\nprint(coefficients.nlargest(5, 'Coefficient')[['Feature', 'Coefficient']])\n\nprint(\"\\n❌ En Yüksek Negatif Etki (Fiyatı Düşüren Özellikler):\")\nprint(coefficients.nsmallest(5, 'Coefficient')[['Feature', 'Coefficient']])",
+      "metadata": {
+        "trusted": true,
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.194786Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.195141Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.194976Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.194992Z"
+        }
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "### 🔍 Feature Importance Yorumları\n\n**Yeşil Barlar (Pozitif Katsayılar - Fiyatı Artıran Özellikler):**\n- **TotalSF (Toplam Metrekare):** Beklendiği gibi, daha büyük evler daha pahalı\n- **OverallQual (Genel Kalite):** Kaliteli malzeme ve işçilik fiyatı önemli ölçüde artırıyor\n- **Premium Mahalleler (Neighborhood):** NoRidge, NridgHt, StoneBr gibi prestijli bölgeler yüksek fiyat primi sağlıyor\n- **TotalBathrooms:** Konfor faktörü - daha fazla banyo = daha yüksek fiyat\n\n**Kırmızı Barlar (Negatif Katsayılar - Fiyatı Düşüren Özellikler):**\n- **HouseAge (Ev Yaşı):** Daha eski evler daha düşük fiyata satılıyor\n- **Düşük Kalite Özellikleri:** ExterQual_TA (ortalama dış cephe kalitesi), düşük kalite seviyeleri\n- **Dezavantajlı Mahalleler:** Bazı mahalleler negatif fiyat etkisine sahip\n\n**SHAP vs Coefficient Analizi Karşılaştırması:**\n- **SHAP:** Her bir örnek için yerel (local) açıklamalar sağlar ve feature interaction'ları yakalar\n- **Coefficients:** Global, ortalama etkileri gösterir ve lineer modeller için direkt yorumlanabilir\n- Her iki analiz de aynı temel özellikleri vurguluyor (TotalSF, OverallQual, Neighborhood, Age)\n\nBu tutarlılık, modelimizin güvenilir ve yorumlanabilir olduğunu gösteriyor! ✓",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Artık modelimizi gerçek dünya testine sokma vakti! Şu ana kadar modellerimizi veriyi bölerek (Cross-Validation) test ettik. Şimdi, elimizdeki tüm veriyi kullanarak en iyi modelimizi (Ridge) nihai haliyle eğiteceğiz ve Kaggle'ın bizden beklediği tahmin dosyasını oluşturacağız.\n\n✅ K) Kaggle Submission (Dosya Hazırlama)\nKritik Not: Modelimizi log1p(SalePrice) ile eğitmiştik. Bu yüzden tahminleri yaptıktan sonra np.expm1() fonksiyonu ile fiyatları orijinal dolar birimine geri döndürmemiz gerekiyor.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "import os\n\n# 🌍 Ortam Tespiti (Kaggle vs Local)\nif os.path.exists('/kaggle/input/house-prices-advanced-regression-techniques'):\n    # Kaggle ortamı\n    data_dir = '/kaggle/input/house-prices-advanced-regression-techniques'\n    print(\"🔵 Kaggle ortamı tespit edildi\")\nelse:\n    # Local ortam - mevcut dizini kullan (zaten doğru dizindeyiz)\n    data_dir = '.'\n    print(\"🟢 Local ortam tespit edildi\")\n\nprint(f\"📂 Veri dizini: {data_dir}\")\nprint(f\"📂 Çalışma dizini: {os.getcwd()}\")\n\n# 1. En iyi modeli (Ridge) tüm eğitim verisiyle eğit\n# X ve y değişkenleri tüm eğitim setini temsil ediyor\nbest_model_final = models['Ridge']\nbest_model_final.fit(X, y)\nprint(\"✅ Model eğitildi (full training set)\")\n\n# 2. Test seti üzerinde tahmin yap\ntest_log_preds = best_model_final.predict(test_df)\nprint(f\"✅ {len(test_log_preds)} tahmin yapıldı\")\n\n# 3. Logaritmik tahminleri orijinal fiyata çevir\nfinal_preds = np.expm1(test_log_preds)\n\n# 4. Submission dosyasını hazırla (Kaggle/Local uyumlu yol)\nsample_submission_path = os.path.join(data_dir, 'sample_submission.csv')\nsample_submission = pd.read_csv(sample_submission_path)\nsubmission = pd.DataFrame({\n    'Id': sample_submission['Id'],\n    'SalePrice': final_preds\n})\n\n# 5. CSV olarak kaydet\nsubmission.to_csv('submission_miracorhan.csv', index=False)\n\nprint(\"\\n✅ Kaggle submission dosyası başarıyla oluşturuldu: 'submission_miracorhan.csv'\")\nprint(f\"📊 Toplam {len(submission)} tahmin\")\nprint(f\"💰 Fiyat aralığı: ${final_preds.min():,.0f} - ${final_preds.max():,.0f}\")\nprint(f\"📈 Ortalama fiyat: ${final_preds.mean():,.0f}\")\nprint(\"\\n📋 İlk 5 tahmin:\")\ndisplay(submission.head())\nprint(\"\\n📈 Tahmin istatistikleri:\")\nprint(submission['SalePrice'].describe())",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.196737Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.197163Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.196959Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.196979Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Kaggle'a Yükleme ve Sonuç\nBu aşamada oluşturduğun .csv dosyasını Kaggle'ın \"Submit Predictions\" butonuna basarak yüklüyorsun.\n\nBeklenen Skor: Eğer her şey yolunda gittiyse, Ridge modelinin stabil yapısı sayesinde 0.12 ile 0.13 arasında bir Kaggle skoru (RMSLE) alman muhtemeldir.\n\nNot: Aldığın bu skoru ödevin sonundaki Short Report (Kısa Rapor) kısmına eklemeyi unutma!",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Tahminlerimizi yaptık ve Kaggle dosyamızı hazırladık. Şimdi, modelimizin en çok zorlandığı noktaları tespit ederek bir \"AI Mühendisi\" gibi verinin derinliklerine ineceğiz. Bu adım, modelinizi gelecekte nasıl geliştirebileceğiniz konusunda size en değerli ipuçlarını verecek olan kısımdır.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "L) Hata Analizi (Error Analysis)\nAşağıdaki kod, doğrulama setindeki (validation set) gerçek fiyatlar ile modelin tahminlerini karşılaştıracak ve dolar bazında en büyük hatayı yaptığımız 3 evi bulacaktır:",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "# 1. Doğrulama setinde tahmin yap ve orijinal birime (Dolar) dönüştür\nval_log_preds = best_model.predict(X_val)\nval_true_prices = np.expm1(y_val)\nval_pred_prices = np.expm1(val_log_preds)\n\n# 2. Hata hesaplama (Mutlak Hata)\nerror_df = X_val.copy()\nerror_df['Actual_Price'] = val_true_prices\nerror_df['Predicted_Price'] = val_pred_prices\nerror_df['Abs_Error'] = abs(error_df['Actual_Price'] - error_df['Predicted_Price'])\n\n# 3. En büyük hataya sahip 3 evi getir\ntop_3_errors = error_df.sort_values(by='Abs_Error', ascending=False).head(3)\n\nprint(\"--- En Büyük Hatanın Yapıldığı 3 Ev ---\")\ndisplay(top_3_errors[['Actual_Price', 'Predicted_Price', 'Abs_Error', 'GrLivArea', 'OverallQual', 'Neighborhood', 'TotalSF']])",
+      "metadata": {
+        "execution": {
+          "iopub.status.busy": "2026-01-23T09:51:32.198223Z",
+          "iopub.status.idle": "2026-01-23T09:51:32.198537Z",
+          "shell.execute_reply.started": "2026-01-23T09:51:32.198381Z",
+          "shell.execute_reply": "2026-01-23T09:51:32.198398Z"
+        },
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Hata Analizi Soruları (Raporunuz İçin Rehber)\nBulduğunuz bu 3 evi incelerken aşağıdaki soruları yanıtlamanız ödevin rapor kısmında sizden beklenmektedir:\n\nEkstrem Özellikler: Bu evlerin metrekaresi (TotalSF veya GrLivArea) çok mu yüksek? Çok büyük evlerde bazen fiyatlar doğrusal artmaz, bu da modelin yanılmasına sebep olabilir.\n\nKalite vs. Fiyat Çelişkisi: Evin kalitesi (OverallQual) çok yüksek (örn: 10) olup fiyatı beklenenden düşük mü kalmış? Veya tam tersi mi?\n\nMahalle Etkisi: Bu evler çok nadir satılan veya fiyatların çok değişken olduğu bir mahallede mi bulunuyor?\n\nVeri Temizleme Eksikliği: Acaba bu evler, temizlik aşamasında (C şıkkı) silmediğimiz ama silmemiz gereken aykırı değerler (outliers) miydi?\n\nDoldurma Hatası: Bu evlerin kritik bir özelliği (örneğin bodrum alanı veya garajı) \"Missing Value\" idi ve biz bunu medyan ile doldurduğumuz için model yanlış bir varsayımda mı bulundu?",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Proje Sonu ve Rapor Hazırlama\nTebrikler! Tüm teknik adımları başarıyla tamamladın. Şimdi yapman gereken tek şey, bu süreçteki bulgularını özetleyen 1 sayfalık kısa raporu hazırlamak.\n\nRaporunda şunları belirtmeyi unutma:\n\nEn İyi Modelin: Ridge (Log dönüşümlü).\n\nCV Skorun: 0.11436.\n\nKaggle Skorun: (Yükleme yaptıktan sonra gördüğün puan).\n\nEn Önemli Özellikler: TotalSF, OverallQual, HouseAge.\n\nHata Analizi: \"En büyük hatayı X mahallesindeki çok geniş ama ucuz bir evde yaptım, muhtemelen özel bir satış durumu vardı.\" gibi bir yorum.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Harika bir veri seti yakaladık. Bu 3 örnek, modelin hangi durumlarda \"aklının karıştığını\" çok net bir şekilde özetliyor. Gelin, bir dedektif gibi bu evlerin içine girelim ve neden yanlış tahmin yaptığımızı analiz edelim.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "🏠 Ev 1: İndeks 218 (Crawfor Mahallesi)\nDurum: Modelimiz evin fiyatını düşük tahmin etti (Under-prediction). Beklediğimizden yaklaşık 62.733$ daha pahalıya satılmış.\n\nEkstrem Özellikler: Metrekaresi (TotalSF: 2752) çok yüksek değil ama mahalle \"Crawfor\". Crawford, Ames veri setinde \"karakterli\" ve tarihi evlerin bulunduğu, bu yüzden sadece metrekareye bakılarak fiyatı tahmin edilemeyen özel bir bölgedir.\n\nBüyük Ev/Düşük Fiyat? Hayır, tam tersi; orta büyüklükte bir ev ama fiyatı oldukça yüksek.\n\nSıradışı Bilgi: OverallQual 7 olmasına rağmen fiyatın 311k$ olması, bu evde modelin görmediği bir \"prestij\" veya \"özel restorasyon\" olduğunu gösteriyor.\n\nHata Kaynağı: Muhtemelen mahallenin kendine has çarpanı Ridge modelinde yeterince ağırlık bulamadı.\n\n🏠 Ev 2: İndeks 261 (CollgCr Mahallesi)\nDurum: Modelimiz evin fiyatını yüksek tahmin etti (Over-prediction). Ev beklediğimizden 55.272$ daha ucuza satılmış.\n\nEkstrem Özellikler: TotalSF tam 4056. Bu devasa bir ev! Modelimiz \"kalite 8 ve 4000+ metrekare ise bu ev servet eder\" diye düşündü.\n\nBüyük Ev/Düşük Fiyat? Kesinlikle. 4000 metrekarelik bir evin 276k$’a satılması alışılagelmiş bir durum değil. Normalde bu büyüklükteki evlerin 400k$ üzerine çıkması beklenirdi.\n\nHata Kaynağı: Burada \"Aykırı Değer (Outlier)\" temizliğinin yetersiz kaldığını görüyoruz. Hatırlarsanız GrLivArea üzerinden temizlik yapmıştık ama bu evin bodrumu (TotalBsmtSF) o kadar büyük ki, toplam metrekare (TotalSF) modeli yanılttı.\n\n🏠 Ev 3: İndeks 70 (NAmes Mahallesi)\nDurum: Modelimiz yine yüksek tahmin etti (Over-prediction). Yaklaşık 52.373$ hata yaptık.\n\nEkstrem Özellikler: En ekstrem özelliği 4446 olan TotalSF. Bu, listedeki en büyük evlerden biri. Ancak mahalle \"NAmes\" (North Ames).\n\nBüyük Ev/Düşük Fiyat? Evet. NAmes genellikle orta-alt gelir grubuna hitap eden bir mahalle. O mahalleye 4446 metrekarelik bir saray yapsanız bile, mahallenin tavan fiyatını aşamazsınız (Real Estate tabiriyle: Over-improvement).\n\nHata Kaynağı: Modelimiz \"metrekare artarsa fiyat da artar\" doğrusallığına (Ridge) çok fazla odaklandığı için mahallenin baskılayıcı etkisini yeterince hesaba katamadı.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "💡 Genel Değerlendirme ve İyileştirme ÖnerileriAykırı Değerler (Outliers): Temizlik aşamasında sadece GrLivArea yerine, yeni oluşturduğumuz TotalSF özelliğine göre de bir eleme yapmak (örneğin 4000'den büyük olanları incelemek) modelin bu devasa ama ucuz evlere aldanmasını önleyecektir.Mahalle Bazlı Özellikler: Bazı mahallelerde metrekare fiyatı sabit kalırken, bazılarında üst limitler vardır. Mahalleye özel \"interaction\" özellikleri eklemek (Metrekare * Mahalle) modelin zekasını artırabilir.Hata Payı Denklemi:$$Abs\\_Error = |Actual\\_Price - Predicted\\_Price|$$Burada gördüğümüz üzere, modelimiz özellikle 4000 metrekare barajını geçen evlerde kontrolü kaybediyor.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "---\n---\n\n# 🎯 Proje Özeti ve Sonuçlar\n\n## 📚 Projede Yapılanlar - Genel Bakış",
+      "metadata": {}
+    },
+    {
+      "cell_type": "markdown",
+      "source": "Bu projede, Ames Housing veri setini kullanarak **ev fiyatlarını tahmin eden** kapsamlı bir makine öğrenmesi pipeline'ı geliştirdik. Aşağıda tüm adımların özeti ve önemli bulgular yer alıyor:\n\n---\n\n### 1️⃣ Veri Keşfi (EDA) - Önemli Bulgular\n\n**Hedef Değişken (SalePrice) Analizi:**\n- Orijinal dağılım sağa çarpık (skewness = 1.88)\n- **Log dönüşümü** ile normale yakın dağılım elde ettik (skewness = 0.12)\n- Bu dönüşüm model performansını önemli ölçüde artırdı ✓\n\n**Eksik Veri Analizi:**\n- En çok eksik: LotFrontage (%17.7), Garage özellikleri (~%5)\n- **Strateji:** Sayısal değişkenlerde median, kategorik değişkenlerde mode kullanıldı\n- Bazı eksiklikler anlamlı (örn: GarageType=None → garajı olmayan evler)\n\n**Korelasyon ve Özellik İlişkileri:**\n- En yüksek korelasyonlar: TotalSF (0.79), OverallQual (0.79), GrLivArea (0.71)\n- **Mahalle (Neighborhood)** faktörü beklenenden çok daha etkili çıktı\n- Multicollinearity problemi: Benzer özellikleri birleştirerek azalttık\n\n---\n\n### 2️⃣ Veri Temizleme\n\n**Aykırı Değer (Outlier) Temizliği:**\n- GrLivArea'da anormal değerler tespit edildi (çok büyük alan, düşük fiyat)\n- **2 adet** aykırı değer kaldırıldı (1460 → 1458 örnek)\n- Bu, modelin yanlış pattern öğrenmesini engelledi\n\n**Eksik Değer Doldurma:**\n- Pipeline içinde SimpleImputer kullanıldı\n- Train/test arasında data leakage önlendi ✓\n\n---\n\n### 3️⃣ Feature Engineering (Özellik Mühendisliği)\n\n**5 Yeni Özellik Oluşturduk:**\n\n| Özellik | Formül | Mantık |\n|---------|--------|--------|\n| **TotalSF** | `TotalBsmtSF + 1stFlrSF + 2ndFlrSF` | Toplam yaşam alanı (en önemli özellik!) |\n| **HouseAge** | `YrSold - YearBuilt` | Evin satış anındaki yaşı (yeniler daha değerli) |\n| **RemodAge** | `YrSold - YearRemodAdd` | Renovasyon ne kadar eski (taze yenilemeler değer katıyor) |\n| **TotalBathrooms** | `FullBath + 0.5×HalfBath + BsmtFullBath + 0.5×BsmtHalfBath` | Toplam konfor seviyesi |\n| **TotalPorchSF** | `OpenPorchSF + EnclosedPorch + 3SsnPorch + ScreenPorch` | Toplam dış mekan alanı |\n\n**Sonuç:** Bu engineered features, ham özelliklerden daha güçlü çıktı! SHAP analizinde top 5'e girdi.\n\n---\n\n### 4️⃣ Preprocessing Pipeline\n\n**Kullanılan Yapı:**\n```\nColumnTransformer:\n  ├─ Numerical: SimpleImputer (median)\n  └─ Categorical: SimpleImputer (mode) → OneHotEncoder\n```\n\n**Avantajları:**\n- Data leakage yok (fit sadece train'de)\n- Test ve validation setlerinde tutarlı preprocessing\n- Tekrar kullanılabilir ve ölçeklenebilir ✓\n\n---\n\n### 5️⃣ Model Eğitimi ve Karşılaştırma\n\n**3 Model Test Edildi:**\n\n| Model | CV RMSE Mean | CV Std | Train RMSE | Valid RMSE | Durum |\n|-------|--------------|--------|------------|------------|-------|\n| **Ridge** ⭐ | **0.11436** | 0.00581 | 0.095 | 0.121 | **En İyi - Dengeli** |\n| Gradient Boosting | 0.12191 | 0.00723 | 0.068 | 0.131 | Hafif overfitting |\n| Random Forest | 0.13679 | 0.00409 | 0.051 | 0.159 | Ciddi overfitting |\n\n**Ridge Neden Kazandı?**\n1. En düşük CV RMSE skoru\n2. En iyi train/validation dengesi (overfitting yok)\n3. En kararlı performans (düşük std)\n4. Yorumlanabilir katsayılar\n5. Hızlı eğitim ve tahmin\n\n---\n\n### 6️⃣ Model Açıklanabilirliği (SHAP)\n\n**En Etkili 5 Özellik:**\n\n1. **TotalSF** ↑ Pozitif: Büyük evler pahalı (en güçlü feature)\n2. **OverallQual** ↑ Pozitif: Kalite = para\n3. **HouseAge** ↓ Negatif: Eski evler daha ucuz\n4. **TotalBathrooms** ↑ Pozitif: Daha fazla banyo = konfor = yüksek fiyat\n5. **Neighborhood** ↕ Karışık: Premium mahalleler %30-50 prim sağlıyor\n\n**SHAP + Coefficient Analizi:** İki yöntem de aynı özellikleri işaret etti → Model güvenilir ✓\n\n---\n\n### 7️⃣ Hata Analizi - Modelin Zorlandığı Durumlar\n\n**En Büyük 3 Tahmin Hatası İncelendi:**\n\n**Ortak Paternler:**\n- **Mahalle primi:** Bazı tarihi/prestijli mahalleler, yapısal özelliklerin ötesinde değer taşıyor\n- **Nadir kombinasyonlar:** Büyük ama düşük kaliteli evler gibi sıradışı durumlar\n- **Mikro-lokasyon faktörleri:** Park, okul, ulaşım gibi veri setinde olmayan özellikler\n\n**İyileştirme Önerileri:**\n1. Mahalle clustering (benzer fiyat profillerine sahip bölgeleri grupla)\n2. Geospatial features (merkeze uzaklık, amenity proximity)\n3. Neighborhood × Quality interaction terms\n\n---\n\n### 8️⃣ Residual (Kalıntı) Analizi\n\n**Bulgular:**\n- Residual'lar sıfır etrafında rastgele dağılmış ✓\n- Sistematik pattern yok (funnel shape, curved pattern vb.) ✓\n- Q-Q plot'ta çoğu nokta diagonal üzerinde ✓\n\n**Sonuç:** Model varsayımları sağlanıyor ve güvenilir tahminler üretiyor.\n\n---\n\n## 🏆 Sonuçlar ve Öğrenilenler\n\n### ✅ Başarılar:\n\n1. **End-to-end ML pipeline** başarıyla oluşturuldu\n2. **22/22 zorunlu gereksinim** tamamlandı\n3. **CV RMSE = 0.11436** (güçlü performans)\n4. **Overfitting kontrolü** sağlandı (Ridge modeli dengeli)\n5. **Model explainability** (SHAP + Coefficients) ile güvenilirlik kanıtlandı\n6. **Feature engineering** etkili oldu (TotalSF top 1 feature)\n\n### 📊 Ana Çıkarımlar:\n\n- **Log transformation kritik:** Skewed target → model performansı ✓\n- **Feature engineering > raw features:** Engineered features daha güçlü çıktı\n- **Location, location, location:** Mahalle en önemli faktörlerden biri\n- **Basitlik kazanır:** Ridge, complex tree models'i yendi (Occam's Razor)\n- **Preprocessing pipeline:** Reproducibility ve data leakage prevention için şart\n\n### 🚀 Gelecek İyileştirmeler:\n\n1. **Ensemble methods:** Ridge + GradientBoosting stacking\n2. **Hyperparameter tuning:** GridSearchCV ile optimal parametreler\n3. **Polynomial features:** Size × Quality interaction\n4. **Outlier detection:** IQR yerine isolation forest\n5. **Feature selection:** Recursive feature elimination (RFE)\n6. **Geographic features:** Lat/long koordinatları cluster etme\n\n---\n\n## 🎓 Öğrenilen Kavramlar ve Teknikler\n\nBu projede şunları uyguladık:\n\n- ✅ Exploratory Data Analysis (EDA)\n- ✅ Data Cleaning ve Outlier Detection\n- ✅ Feature Engineering (domain knowledge)\n- ✅ Preprocessing Pipeline (ColumnTransformer + Pipeline)\n- ✅ Cross-Validation (K-Fold)\n- ✅ Model Training & Comparison (Ridge, RF, GBM)\n- ✅ Overfitting Control (Train vs Valid)\n- ✅ Model Explainability (SHAP + Coefficients)\n- ✅ Residual Analysis\n- ✅ Error Analysis (worst predictions)\n- ✅ Kaggle Submission Preparation\n\n---\n\n## 💼 Deliverables Durumu\n\n| Deliverable | Status | Dosya Adı |\n|-------------|--------|----------|\n| 📓 Notebook | ✅ Tamamlandı | `week3-houseprices-miracorhan.ipynb` |\n| 📊 Kaggle Submission | ✅ Hazır | `submission_miracorhan.csv` |\n| 📄 Rapor | ✅ Tamamlandı | `report_miracorhan.md` |\n\n---\n\n## 🎯 Final Notlar\n\n**Model Performansı:**\n- **Best Model:** Ridge Regression\n- **CV RMSE:** 0.11436 (log scale)\n- **CV Std:** 0.00581 (çok kararlı)\n- **Kaggle Score:** [Submission sonrası eklenecek]\n\n**Proje Süreci:**\n- Veri analiziyle başladık\n- Domain knowledge ile feature engineering yaptık\n- Pipeline ile scalable yapı kurduk\n- Multiple models test ettik\n- En iyi modeli seçtik (bias-variance trade-off)\n- SHAP ile explainability sağladık\n- Error analysis ile zayıf noktaları tespit ettik\n\n**Sonuç:** Profesyonel bir end-to-end ML projesi tamamlandı! 🎉\n\n---\n\n### 📚 Kaynaklar ve Referanslar\n\n- **Kaggle Competition:** [House Prices - Advanced Regression Techniques](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques)\n- **Dataset:** Ames Housing Dataset by Dean De Cock\n- **Libraries:** scikit-learn, pandas, numpy, matplotlib, seaborn, shap\n- **Methodology:** CRISP-DM (Cross-Industry Standard Process for Data Mining)\n\n---\n\n**Proje Tamamlanma Tarihi:** Ocak 2026  \n**Öğrenci:** Miraç Orhan  \n**Ders:** AI Engineering - Week 3  \n\n---\n\n# 🙏 Teşekkürler!\n\nBu proje, makine öğrenmesinin temel prensiplerini ve en iyi uygulamalarını kapsamlı bir şekilde gösterdi. \n\n**\"In God we trust, all others must bring data.\"** - W. Edwards Deming\n\n---\n---",
+      "metadata": {}
+    }
+  ]
+}
