@@ -12,7 +12,9 @@ Notebook'u **otomatik** çalıştırma sırasında hücre bağımlılık sorunla
 ### Yöntem 1: VS Code (EN KOLAY)
 
 1. **VS Code'u aç**
-2. **Notebook'u aç**: `week3-houseprices-miracorhan.ipynb`
+2. **Notebook'u aç**:
+   - Türkçe: `week3-houseprices-miracorhan_TR.ipynb`
+   - İngilizce: `week3-houseprices-miracorhan.ipynb`
 3. **Python kernel seç**: Sağ üstten "Select Kernel" → Python 3.12 seç
 4. **Çalıştır**:
    - Tek hücre: Hücrenin yanındaki ▶️ butonuna tıkla
@@ -35,7 +37,9 @@ jupyter notebook
 ```
 
 1. Tarayıcıda notebook açılacak
-2. `week3-houseprices-miracorhan.ipynb` dosyasına tıkla
+2. Notebook dosyasına tıkla:
+   - Türkçe: `week3-houseprices-miracorhan_TR.ipynb`
+   - İngilizce: `week3-houseprices-miracorhan.ipynb`
 3. Üstteki menüden: **Kernel → Restart & Run All**
 4. **"Restart and Run All Cells"** butonuna tıkla
 5. ~2-5 dakika bekle
@@ -199,8 +203,9 @@ python3 -m ipykernel install --user --name python3 --display-name "Python 3"
 ---
 
 **Tüm dosyalar hazır!**
-- ✅ `week3-houseprices-miracorhan.ipynb` (65 hücre)
-- ✅ `report_miracorhan.md` (formal rapor)
+- ✅ `week3-houseprices-miracorhan.ipynb` (İngilizce, 65+ hücre)
+- ✅ `week3-houseprices-miracorhan_TR.ipynb` (Türkçe, 65+ hücre)
+- ✅ `report_miracorhan.md` (formal rapor, İngilizce)
 - ✅ Tüm kodlar düzeltildi
 - ✅ Kütüphaneler yüklendi
 
