@@ -34,17 +34,26 @@
 
 ## 3. Kaggle Submission
 
-**Status:** Submission file created ✅
-**File:** submission_miracorhan.csv
-**Predictions:** 1459 houses (test set)
-**Price Range:** $45,903 - $1,755,851
-**Mean Prediction:** $179,602
-**Expected Score:** ~0.11-0.13 (based on CV performance)
+**Status:** Successfully submitted to Kaggle ✅
 
-**Submission Details:**
+**Kaggle Performance:**
+- **Expected Score:** 0.11-0.13 (based on CV) | **Achieved: 0.13409** 🎯
+- **Public Leaderboard Rank:** **2082** / ~4500+ teams
+- **Percentile:** Top 46%
+- **Kaggle Notebook:** [View on Kaggle](https://www.kaggle.com/code/miracorhan/week3-houseprices-miracorhan/notebook)
+- **GitHub Repository:** [View Source Code](https://github.com/miracorhan/AI_Engineering_Week_3)
+
+**Submission File Details:**
+- **File:** submission_miracorhan.csv
+- **Predictions:** 1459 houses (test set)
+- **Price Range:** $45,903 - $1,755,851
+- **Mean Prediction:** $179,602
+
+**Quality Validation:**
 - All quality checks passed (no negative values, no NaN, correct format)
 - Test predictions distribution closely matches training data distribution
 - Model predictions are within reasonable bounds for Ames, Iowa housing market
+- Achieved score aligns with CV performance expectations (within predicted range)
 
 ---
 

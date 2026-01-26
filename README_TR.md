@@ -6,6 +6,19 @@
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python)](https://www.python.org/)
 [![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?style=flat&logo=jupyter)](https://jupyter.org/)
 
+## 🏆 Yarışma Sonuçları
+
+| Metrik | Değer |
+|--------|-------|
+| **Kaggle Skoru (RMSLE)** | **0.13409** 🎯 |
+| **Beklenen Aralık** | 0.11 - 0.13 (CV'ye göre) |
+| **Açık Skor Tablosu Sırası** | **2082** / ~4500+ takım |
+| **Yüzdelik Dilim** | İlk %46 |
+| **Kaggle Notebook** | [Kaggle'da Görüntüle](https://www.kaggle.com/code/miracorhan/week3-houseprices-miracorhan/notebook) |
+| **GitHub Deposu** | [Kaynak Kodları Görüntüle](https://github.com/miracorhan/AI_Engineering_Week_3) |
+
+*Kapsamlı özellik mühendisliği, model topluluğu ve SHAP tabanlı açıklanabilirlik analizi ile elde edilen skor.*
+
 ## 📋 Proje Hakkında
 
 Bu proje, Kaggle'ın popüler **House Prices - Advanced Regression Techniques** yarışması için geliştirilmiş profesyonel bir makine öğrenmesi pipeline'ıdır. Ames, Iowa'daki konut fiyatlarını 79 farklı özellik kullanarak tahmin etmeyi amaçlar.
@@ -35,7 +48,7 @@ Proje, sadece yüksek tahmin doğruluğu değil, aynı zamanda **veri keşfi (ED
 
 ```bash
 # Repository'yi klonlayın
-git clone <repository-url>
+git clone https://github.com/miracorhan/AI_Engineering_Week_3
 cd house-prices-advanced-regression-techniques
 
 # Gerekli kütüphaneleri yükleyin
@@ -136,7 +149,7 @@ Notebook, aşağıdaki 13 adımlı yapıyı takip eder:
 | **Train RMSE** | 0.0953 |
 | **Validation RMSE** | 0.1211 |
 | **Train/Valid Ratio** | 0.79 (Orta seviye overfitting) |
-| **Kaggle Score** | *[Tahmini: 0.11-0.13]* |
+| **Kaggle Score** | Beklenen: 0.11-0.13 \| **Elde Edilen: 0.13409** 🎯 (Sıra: 2082/~4500) |
 
 ### Model Karşılaştırması
 
@@ -264,6 +277,8 @@ Model çok büyük evlerde (>4,000 sq ft) zorluk çekiyor:
 - [Kaggle Yarışması](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques)
 - [Veri Seti İndir](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data)
 - [Leaderboard](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/leaderboard)
+- [Kaggle Notebook](https://www.kaggle.com/code/miracorhan/week3-houseprices-miracorhan/notebook) - Kaggle'da tam notebook'u görüntüle
+- [GitHub Deposu](https://github.com/miracorhan/AI_Engineering_Week_3) - Kaynak kod ve proje dosyalarını görüntüle
 
 ## 📖 Ek Dökümanlar
 

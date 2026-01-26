@@ -6,6 +6,19 @@
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python)](https://www.python.org/)
 [![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?style=flat&logo=jupyter)](https://jupyter.org/)
 
+## 🏆 Competition Results
+
+| Metric | Value |
+|--------|-------|
+| **Kaggle Score (RMSLE)** | **0.13409** 🎯 |
+| **Expected Range** | 0.11 - 0.13 (based on CV) |
+| **Public Leaderboard Rank** | **2082** / ~4500+ teams |
+| **Percentile** | Top 46% |
+| **Kaggle Notebook** | [View on Kaggle](https://www.kaggle.com/code/miracorhan/week3-houseprices-miracorhan/notebook) |
+| **GitHub Repository** | [View Source Code](https://github.com/miracorhan/AI_Engineering_Week_3) |
+
+*Score achieved through comprehensive feature engineering, model ensemble, and SHAP-based explainability analysis.*
+
 ## 📋 About the Project
 
 This project is a professional machine learning pipeline developed for Kaggle's popular **House Prices - Advanced Regression Techniques** competition. It aims to predict housing prices in Ames, Iowa using 79 different features.
@@ -35,7 +48,7 @@ The project focuses not only on high prediction accuracy, but also on real-world
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/miracorhan/AI_Engineering_Week_3
 cd house-prices-advanced-regression-techniques
 
 # Install required libraries
@@ -132,7 +145,7 @@ The notebook follows this 13-step structure:
 | **Train RMSE** | 0.0953 |
 | **Validation RMSE** | 0.1211 |
 | **Train/Valid Ratio** | 0.79 (Moderate overfitting) |
-| **Kaggle Score** | *[Estimated: 0.11-0.13]* |
+| **Kaggle Score** | Expected: 0.11-0.13 \| **Achieved: 0.13409** 🎯 (Rank: 2082/~4500) |
 
 ### Model Comparison
 
@@ -260,6 +273,8 @@ The model struggles with very large houses (>4,000 sq ft):
 - [Kaggle Competition](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques)
 - [Download Dataset](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data)
 - [Leaderboard](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/leaderboard)
+- [Kaggle Notebook](https://www.kaggle.com/code/miracorhan/week3-houseprices-miracorhan/notebook) - View the full notebook on Kaggle
+- [GitHub Repository](https://github.com/miracorhan/AI_Engineering_Week_3) - View source code and project files
 
 ## 📖 Additional Documentation
 
