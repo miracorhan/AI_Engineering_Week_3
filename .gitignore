@@ -1,7 +1,3 @@
-# Exclude Claude Code configuration and instructions
-CLAUDE.md
-.claude/
-
 # Python
 __pycache__/
 *.py[cod]
