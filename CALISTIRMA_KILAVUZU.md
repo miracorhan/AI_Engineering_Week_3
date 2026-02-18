@@ -148,16 +148,17 @@ cp submission_miracorhan.csv /mnt/c/Users/<KullanıcıAdın>/Downloads/
 4. **"Make Submission"** tıkla
 5. Skorunu bekle! (~30 saniye)
 
-### 3. Skoru Kaydet
+### 3. Yarışma Sonuçları ✅
 
-Kaggle skoru geldiğinde:
+**Elde Edilen Skor:**
+- **Kaggle Skoru (RMSLE):** **0.13409** 🎯
+- **Beklenen Aralık:** 0.11 - 0.13 (CV'ye göre)
+- **Sıralama:** **2082** / ~4500+ takım
+- **Yüzdelik Dilim:** İlk %46
 
-```bash
-# report_miracorhan.md dosyasını güncelle
-nano report_miracorhan.md
+**Kaggle Notebook:** [Kaggle'da Görüntüle](https://www.kaggle.com/code/miracorhan/week3-houseprices-miracorhan/notebook)
 
-# "Kaggle Score" bölümüne skorunu yaz
-```
+**GitHub Deposu:** [Kaynak Kodlar](https://github.com/miracorhan/AI_Engineering_Week_3)
 
 ---
 

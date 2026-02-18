@@ -143,14 +143,14 @@ awk -F',' 'NR>1 {sum+=$2; count++; if($2<min || min==""){min=$2} if($2>max){max=
 
 6. **View Results**
    - Your score will appear on the leaderboard
-   - Expected score: 0.11 - 0.13 (RMSLE)
-   - Check your ranking and position
+   - Expected score: 0.11 - 0.13 (RMSLE) | **Achieved: 0.13409** 🎯
+   - **Rank: 2082** / ~4500+ teams (Top 46%)
+   - **Kaggle Notebook:** [View on Kaggle](https://www.kaggle.com/code/miracorhan/week3-houseprices-miracorhan/notebook)
+   - **GitHub Repository:** [View Source](https://github.com/miracorhan/AI_Engineering_Week_3)
 
-7. **Update Documentation**
-   ```bash
-   # Update report_miracorhan.md with your actual Kaggle score
-   # Replace the "Expected Score" line with your real score
-   ```
+7. **Documentation Updated** ✅
+   - All documentation files updated with actual Kaggle competition results
+   - Report and README files contain final scores and rankings
 
 ### Troubleshooting Submission Issues
 
@@ -195,11 +195,13 @@ awk -F',' 'NR>1 {sum+=$2; count++; if($2<min || min==""){min=$2} if($2>max){max=
 
 ---
 
-## Expected Performance
+## Expected vs Actual Performance
 
 Based on 5-fold cross-validation:
 - **Estimated Kaggle Score:** 0.11 - 0.13 (RMSLE)
-- **Leaderboard Position:** Top 30-40% (competitive for educational project)
+- **Actual Kaggle Score:** **0.13409** (RMSLE) 🎯
+- **Expected Position:** Top 30-40%
+- **Actual Position:** **Rank 2082** / ~4500+ teams (Top 46%)
 
 **Note:** Actual Kaggle score may vary slightly from CV score due to:
 - Different data distribution in test set
